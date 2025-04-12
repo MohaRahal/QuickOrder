@@ -1,0 +1,102 @@
+﻿@inherits LayoutComponentBase
+<style>
+    .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 60px;
+    height: 100vh;
+    transition: width 0.3s;
+    overflow-x: hidden;
+    background-color: #1f1f1f;
+    color: white;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    }
+
+    .sidebar:hover {
+    width: 200px;
+    }
+
+    .nav-item-text {
+    opacity: 0;
+    transition: opacity 0.3s;
+    white-space: nowrap;
+    }
+
+    .sidebar:hover .nav-item-text {
+    opacity: 1;
+    }
+
+    .nav-icon {
+    font-size: 20px;
+    margin-right: 10px;
+    }
+
+    .nav-link {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    color: white;
+    text-decoration: none;
+    }
+
+    .nav-link:hover {
+    background-color: #2d2d2d;
+    }
+
+    .main-content {
+    margin-left: 60px;
+    padding: 20px;
+    transition: margin-left 0.3s;
+    }
+
+    .sidebar:hover ~ .main-content {
+    margin-left: 200px;
+    }
+
+</style>
+
+
+<div class="sidebar">
+    <nav class="flex-column">
+        <NavLink class="nav-link" href="">
+            <span class="nav-icon">🏠</span>
+            <span class="nav-item-text">Início</span>
+        </NavLink>
+        <NavLink class="nav-link" href="/consultar-cnpj">
+            <span class="nav-icon">🔍</span>
+            <span class="nav-item-text">Pesquisar Cliente</span>
+        </NavLink>
+        <NavLink class="nav-link" href="/clientes-cadastrados">
+            <span class="nav-icon">👤</span>
+            <span class="nav-item-text">Clientes</span>
+        </NavLink>   
+        <NavLink class="nav-link" href="/produtos">
+            <span class="nav-icon">📦</span>
+            <span class="nav-item-text">Produtos</span>
+        </NavLink>
+        <NavLink class="nav-link" href="/novo-pedido">
+            <span class="nav-icon">🛒</span>
+            <span class="nav-item-text">Novo Pedido</span>
+        </NavLink>
+        <NavLink class="nav-link" href="/Logpedidos">
+            <span class="nav-icon">📋</span>
+            <span class="nav-item-text">Pedidos</span>
+        </NavLink>
+        <NavLink class="nav-link" href="\relatorios">
+            <span class="nav-icon">📊</span>
+            <span class="nav-item-text">Relatório de Vendas</span>
+        </NavLink>
+    
+    </nav>
+
+</div>
+
+<div class="main-content">
+    @Body
+</div>
+
+

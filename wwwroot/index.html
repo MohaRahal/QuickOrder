@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>QuickOrder</title>
+    <base href="/" />
+    <link rel="stylesheet" href="css/bootstrap/bootstrap.min.css" />
+    <link rel="stylesheet" href="css/app.css" />
+    <link rel="stylesheet" href="QuickOrder.styles.css" />
+    <link rel="icon" type="image/png" href="favicon.png" />
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+
+</head>
+
+<body>
+
+    <div class="status-bar-safe-area"></div>
+
+    <div id="app">Loading...</div>
+
+
+    <div id="blazor-error-ui">
+        An unhandled error has occurred.
+        <a href="" class="reload">Reload</a>
+        <a class="dismiss">🗙</a>
+    </div>
+
+    <script src="_framework/blazor.webview.js" autostart="false"></script>
+    <!--funcao para mostrar o erro do blazor personalizado pq ele eh um lixo de mostrar o erro-->
+    <script>
+        window.exibirErro = function (mensagem) {
+            const erroDiv = document.getElementById("blazor-error-ui");
+            erroDiv.style.display = "block";
+            erroDiv.innerHTML = `
+                        <strong>Erro:</strong> ${mensagem}
+                        <br/>
+                        <a href="" class="reload">🔁 Recarregar</a>
+                        <a class="dismiss" onclick="document.getElementById('blazor-error-ui').style.display='none'">🗙</a>
+                    `;
+        }
+    </script>
+    <script>
+        function renderChart(canvasId, chartType, labels, quantidadePedidos, valorTotal) {
+            const ctx = document.getElementById(canvasId).getContext('2d');
+
+            // Destroi o gráfico existente, se houver
+            if (window.currentChart) {
+                window.currentChart.destroy();
+            }
+
+            // Gera cores dinâmicas para cada cliente
+            const generateColors = (count, opacity = 0.2) => {
+                const colors = [];
+                for (let i = 0; i < count; i++) {
+                    const r = Math.floor(Math.random() * 255);
+                    const g = Math.floor(Math.random() * 255);
+                    const b = Math.floor(Math.random() * 255);
+                    colors.push(`rgba(${r}, ${g}, ${b}, ${opacity})`);
+                }
+                return colors;
+            };
+
+            const backgroundColorsPedidos = generateColors(labels.length, 0.2);
+            const borderColorsPedidos = generateColors(labels.length, 1);
+            const backgroundColorsValor = generateColors(labels.length, 0.2);
+            const borderColorsValor = generateColors(labels.length, 1);
+
+            // Cria um novo gráfico
+            window.currentChart = new Chart(ctx, {
+                type: chartType,
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Quantidade de Pedidos',
+                            data: quantidadePedidos,
+                            backgroundColor: backgroundColorsPedidos,
+                            borderColor: borderColorsPedidos,
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Valor Total (R$)',
+                            data: valorTotal,
+                            backgroundColor: backgroundColorsValor,
+                            borderColor: borderColorsValor,
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        }
+                    }
+                }
+            });
+        }
+
+
+    </script>
+    <script>
+        async function compartilharArquivoTxt(nomeArquivo, conteudo) {
+            const blob = new Blob([conteudo], { type: 'text/plain' });
+            const file = new File([blob], nomeArquivo, { type: 'text/plain' });
+
+            if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+                try {
+                    await navigator.share({
+                        title: 'Compartilhar Pedido',
+                        text: 'Segue o arquivo do pedido:',
+                        files: [file]
+                    });
+                } catch (error) {
+                    alert('Erro ao compartilhar: ' + error);
+                }
+            } else {
+                alert('Seu navegador não suporta compartilhamento de arquivos 😕');
+            }
+        }
+    </script>
+    <script>
+        window.baixarArquivo = async (nome, streamRef) => {
+            const stream = await streamRef.arrayBuffer();
+            const blob = new Blob([stream]);
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = nome;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+    </script>
+
+    <script>
+        function setBodyClass(theme) {
+            document.body.classList.remove("light", "dark");
+            document.body.classList.add(theme);
+        }
+
+        function storeTheme(theme) {
+            localStorage.setItem("theme", theme);
+        }
+
+        function getStoredTheme() {
+            return localStorage.getItem("theme") || "light";
+        }
+    </script>
+
+
+
+</body>
+
+</html>

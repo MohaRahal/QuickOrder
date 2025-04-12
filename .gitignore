@@ -1,0 +1,48 @@
+# Build results
+bin/
+obj/
+out/
+GeneratedFiles/
+
+# User-specific files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# OS-generated files
+.DS_Store
+Thumbs.db
+
+# Rider
+.idea/
+
+# Visual Studio
+.vs/
+
+# ASP.NET temporary files
+**/App_Data/
+**/App_Start/
+
+# VS Code
+.vscode/
+
+# Log files
+*.log
+
+# NuGet
+*.nupkg
+.nuget/
+packages/
+
+# SQLite database (se você preferir manter localmente apenas)
+*.db
+*.db-wal
+*.db-shm
+
+# PDF gerados (opcional)
+*.pdf
+
+# Secrets e arquivos de configuração locais
+secrets.json
+appsettings.Development.json

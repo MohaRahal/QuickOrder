@@ -1,0 +1,45 @@
+﻿@page "/"
+@inject NavigationManager navManager
+
+<h3 class="mb-4">🏠 Menu Principal</h3>
+
+<div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-4">
+    @foreach (var item in menuItems)
+    {
+        <div class="col">
+            <div class="card h-100 text-center shadow-sm">
+                <div class="card-body">
+                    <div class="display-4 mb-3">@item.Icon</div>
+                    <h5 class="card-title">@item.Title</h5>
+                    <p class="card-text">@item.Description</p>
+                    <button class="btn btn-primary mt-2"
+                            @onclick="() => NavegarPara(item.Route)">
+                        Acessar
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private List<MenuItem> menuItems = new()
+    {
+        new MenuItem("🛒", "Novo Pedido", "Cadastre um novo pedido de cliente.", "/novo-pedido"),
+        new MenuItem("📋", "Pedidos", "Visualize os pedidos realizados.", "/Logpedidos"),
+        new MenuItem("🔍", "Cadastro", "Cadastrar novos clientes.", "/consultar-cnpj"),
+        new MenuItem("👤", "Clientes", "Gerencie os dados dos clientes.", "/clientes-cadastrados"),
+        new MenuItem("📦", "Produtos", "Veja e edite os produtos disponíveis.", "/produtos"),
+        new MenuItem("📊", "Relatórios", "Acompanhe relatórios e análises.", "/relatorios")
+    };
+
+    void NavegarPara(string url) => navManager.NavigateTo(url);
+
+    class MenuItem(string icon, string title, string description, string route)
+    {
+        public string Icon { get; set; } = icon;
+        public string Title { get; set; } = title;
+        public string Description { get; set; } = description;
+        public string Route { get; set; } = route;
+    }
+}

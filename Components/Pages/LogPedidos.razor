@@ -1,0 +1,380 @@
+﻿@page "/Logpedidos"
+@using QuickOrder.Models
+@using QuickOrder.Services
+@inject OrderService orderService
+@inject IJSRuntime JS
+@inject PedidoPdfServices pdfService
+@using Microsoft.JSInterop
+@using System.Text
+@using System.IO
+
+<div class="container mt-4">
+    <h3 class="mb-4">📋 Pedidos Realizados</h3>
+
+    @if (isLoading)
+    {
+        <div class="text-center">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Carregando...</span>
+            </div>
+            <p>Carregando pedidos...</p>
+        </div>
+    }
+    else if (!pedidos.Any())
+    {
+        <div class="alert alert-info">
+            Nenhum pedido foi realizado ainda.
+        </div>
+    }
+    else
+    {
+        <div class="mb-3 d-flex justify-content-between align-items-center">
+            <div class="btn-group">
+                <button class="btn btn-primary" @onclick="ExportarPedidosPdf">
+                    <i class="fas fa-file-pdf"></i> Exportar PDF
+                </button>
+                <button class="btn btn-secondary" @onclick="ExportarTodosPedidosTxt">
+                    <i class="fas fa-file-alt"></i> Exportar TXT
+                </button>
+            </div>
+
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead class="table-dark">
+                    <tr>
+                        <th>ID</th>
+                        <th>Cliente</th>
+                        <th>CNPJ</th>
+                        <th>Data</th>
+                        <th>Produtos</th>
+                        <th>Total</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var pedido in pedidosFiltrados)
+                    {
+                        <tr>
+                            <td>@pedido.IdOrder</td>
+                            <td>@pedido.NameClient</td>
+                            <td>@FormatarCnpj(pedido.CnpjClient)</td>
+                            <td>@pedido.OrderDate.ToString("dd/MM/yyyy HH:mm")</td>
+                            <td>
+                                <ul class="list-unstyled mb-0">
+                                    @foreach (var item in pedido.Items)
+                                    {
+                                        <li>
+                                            <span class="badge bg-secondary">@item.Quantity x</span>
+                                            @item.ProductName (@item.PriceUnit.ToString("C"))
+                                        </li>
+                                    }
+                                </ul>
+                            </td>
+                            <td class="fw-bold">@pedido.TotalOrder.ToString("C")</td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary me-2" @onclick="() => ExportarPedidoIndividual(pedido)">
+                                    <i class="fas fa-download"></i> TXT
+                                </button>
+                                <button class="btn btn-sm btn-outline-success" @onclick="() => MostrarDetalhesPedido(pedido)">
+                                    <i class="fas fa-eye"></i> Detalhes
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mt-3">
+            <div>
+                Mostrando @pedidosFiltrados.Count de @pedidos.Count pedidos
+            </div>
+            <div>
+                <button class="btn btn-sm btn-outline-secondary" @onclick="AtualizarLista" title="Atualizar lista">
+                    <i class="fas fa-sync-alt"></i> Atualizar
+                </button>
+            </div>
+        </div>
+    }
+
+    @if (pedidoSelecionado != null)
+    {
+        <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Detalhes do Pedido #@pedidoSelecionado.IdOrder</h5>
+                        <button type="button" class="btn-close" @onclick="FecharModal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <p><strong>Cliente:</strong> @pedidoSelecionado.NameClient</p>
+                                <p><strong>CNPJ:</strong> @FormatarCnpj(pedidoSelecionado.CnpjClient)</p>
+                            </div>
+                            <div class="col-md-6">
+                                <p><strong>Data:</strong> @pedidoSelecionado.OrderDate.ToString("dd/MM/yyyy HH:mm")</p>
+                                <p><strong>Total:</strong> <span class="text-success fw-bold">@pedidoSelecionado.TotalOrder.ToString("C")</span></p>
+                            </div>
+                        </div>
+
+                        <h6>Itens do Pedido:</h6>
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Produto</th>
+                                    <th class="text-end">Preço Unitário</th>
+                                    <th class="text-end">Quantidade</th>
+                                    <th class="text-end">Subtotal</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in pedidoSelecionado.Items)
+                                {
+                                    <tr>
+                                        <td>@item.ProductName</td>
+                                        <td class="text-end">@item.PriceUnit.ToString("C")</td>
+                                        <td class="text-end">@item.Quantity</td>
+                                        <td class="text-end">@item.Subtotal.ToString("C")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-primary" @onclick="() => ExportarPedidoIndividual(pedidoSelecionado)">
+                            <i class="fas fa-download"></i> Exportar
+                        </button>
+                        <button class="btn btn-secondary" @onclick="FecharModal">Fechar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (mostrarToast)
+    {
+        <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+            <div class="toast show" role="alert" aria-live="assertive" aria-atomic="true">
+                <div class="toast-header @toastClass">
+                    <strong class="me-auto">@toastTitle</strong>
+                    <button type="button" class="btn-close" @onclick="FecharToast"></button>
+                </div>
+                <div class="toast-body">
+                    @toastMessage
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private List<Order> pedidos = new();
+    private List<Order> pedidosFiltrados = new();
+    private bool isLoading = true;
+    private string filtro = string.Empty;
+    private Order? pedidoSelecionado = null;
+
+
+    private bool mostrarToast = false;
+    private string toastTitle = "";
+    private string toastMessage = "";
+    private string toastClass = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CarregarPedidos();
+    }
+
+   
+
+    private async Task CarregarPedidos()
+    {
+        try
+        {
+            isLoading = true;
+            pedidos = await orderService.ObterTodosPedidosAsync();
+            FiltrarPedidos();
+        }
+        catch (Exception ex)
+        {
+            MostrarToast("Erro ao carregar pedidos", ex.Message, "bg-danger text-white");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void FiltrarPedidos()
+    {
+        if (string.IsNullOrWhiteSpace(filtro))
+        {
+            pedidosFiltrados = pedidos;
+            return;
+        }
+
+        var termo = filtro.ToLower();
+        pedidosFiltrados = pedidos.Where(p =>
+            p.NameClient.ToLower().Contains(termo) ||
+            p.CnpjClient.Contains(termo) ||
+            p.IdOrder.ToString().Contains(termo) ||
+            p.Items.Any(i => i.ProductName.ToLower().Contains(termo))
+        ).ToList();
+    }
+
+    private string FormatarCnpj(string cnpj)
+    {
+        if (string.IsNullOrWhiteSpace(cnpj) || cnpj.Length != 14)
+            return cnpj;
+
+        return Convert.ToUInt64(cnpj).ToString(@"00\.000\.000\/0000\-00");
+    }
+
+    private async Task AtualizarLista()
+    {
+        if (isLoading) return;
+        await CarregarPedidos();
+        MostrarToast("Lista atualizada", "Os pedidos foram atualizados com sucesso.", "bg-success text-white");
+    }
+
+    private void LimparFiltro()
+    {
+        filtro = string.Empty;
+        FiltrarPedidos();
+    }
+
+    private void MostrarDetalhesPedido(Order pedido)
+    {
+        pedidoSelecionado = pedido;
+    }
+
+    private void FecharModal()
+    {
+        pedidoSelecionado = null;
+    }
+
+    private async Task ExportarPedidosPdf()
+    {
+        try
+        {
+            if (!pedidosFiltrados.Any())
+            {
+                MostrarToast("Exportação", "Nenhum pedido para exportar.", "bg-warning text-dark");
+                return;
+            }
+
+            var pdfBytes = pdfService.GerarPdf(pedidosFiltrados);
+            var stream = new MemoryStream(pdfBytes);
+            var nomeArquivo = $"pedidos_{DateTime.Now:yyyyMMddHHmmss}.pdf";
+
+            using var streamRef = new DotNetStreamReference(stream);
+            await JS.InvokeVoidAsync("baixarArquivo", nomeArquivo, streamRef);
+
+            MostrarToast("Exportação", "PDF gerado com sucesso!", "bg-success text-white");
+        }
+        catch (Exception ex)
+        {
+            MostrarToast("Erro ao exportar PDF", ex.Message, "bg-danger text-white");
+        }
+    }
+
+    private async Task ExportarTodosPedidosTxt()
+    {
+        try
+        {
+            if (!pedidosFiltrados.Any())
+            {
+                MostrarToast("Exportação", "Nenhum pedido para exportar.", "bg-warning text-dark");
+                return;
+            }
+
+            var sb = new StringBuilder();
+            sb.AppendLine("RELATÓRIO DE PEDIDOS");
+            sb.AppendLine($"Data: {DateTime.Now:dd/MM/yyyy HH:mm}");
+            sb.AppendLine($"Total de pedidos: {pedidosFiltrados.Count}");
+            sb.AppendLine("==========================================");
+
+            foreach (var pedido in pedidosFiltrados)
+            {
+                sb.AppendLine();
+                sb.AppendLine($"Pedido #: {pedido.IdOrder}");
+                sb.AppendLine($"Cliente: {pedido.NameClient}");
+                sb.AppendLine($"CNPJ: {FormatarCnpj(pedido.CnpjClient)}");
+                sb.AppendLine($"Data: {pedido.OrderDate:dd/MM/yyyy HH:mm}");
+                sb.AppendLine("Itens:");
+
+                foreach (var item in pedido.Items)
+                {
+                    sb.AppendLine($" - {item.ProductName}: {item.Quantity} x {item.PriceUnit.ToString("C")} = {item.Subtotal.ToString("C")}");
+                }
+
+                sb.AppendLine($"Total: {pedido.TotalOrder.ToString("C")}");
+                sb.AppendLine("------------------------------------------");
+            }
+
+            var bytes = Encoding.UTF8.GetBytes(sb.ToString());
+            var stream = new MemoryStream(bytes);
+            var nomeArquivo = $"pedidos_{DateTime.Now:yyyyMMddHHmmss}.txt";
+
+            using var streamRef = new DotNetStreamReference(stream);
+            await JS.InvokeVoidAsync("baixarArquivo", nomeArquivo, streamRef);
+
+            MostrarToast("Exportação", "TXT gerado com sucesso!", "bg-success text-white");
+        }
+        catch (Exception ex)
+        {
+            MostrarToast("Erro ao exportar TXT", ex.Message, "bg-danger text-white");
+        }
+    }
+
+    private async Task ExportarPedidoIndividual(Order pedido)
+    {
+        try
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine($"📋 Pedido #: {pedido.IdOrder}");
+            sb.AppendLine($"📅 Data: {pedido.OrderDate:dd/MM/yyyy HH:mm}");
+            sb.AppendLine($"👤 Cliente: {pedido.NameClient}");
+            sb.AppendLine($"🔢 CNPJ: {FormatarCnpj(pedido.CnpjClient)}");
+            sb.AppendLine("📦 Itens:");
+
+            foreach (var item in pedido.Items)
+            {
+                sb.AppendLine($" - {item.ProductName}: {item.Quantity} x {item.PriceUnit.ToString("C")} = {item.Subtotal.ToString("C")}");
+            }
+
+            sb.AppendLine($"💵 Total: {pedido.TotalOrder.ToString("C")}");
+            sb.AppendLine("----------------------------------");
+
+            var bytes = Encoding.UTF8.GetBytes(sb.ToString());
+            var stream = new MemoryStream(bytes);
+            var nomeArquivo = $"pedido_{pedido.IdOrder}_{DateTime.Now:yyyyMMddHHmmss}.txt";
+
+            using var streamRef = new DotNetStreamReference(stream);
+            await JS.InvokeVoidAsync("baixarArquivo", nomeArquivo, streamRef);
+
+            MostrarToast("Exportação", "Pedido exportado com sucesso!", "bg-success text-white");
+        }
+        catch (Exception ex)
+        {
+            MostrarToast("Erro ao exportar pedido", ex.Message, "bg-danger text-white");
+        }
+    }
+
+    private void MostrarToast(string titulo, string mensagem, string classe)
+    {
+        toastTitle = titulo;
+        toastMessage = mensagem;
+        toastClass = classe;
+        mostrarToast = true;
+        StateHasChanged();
+    }
+
+    private void FecharToast()
+    {
+        mostrarToast = false;
+    }
+}

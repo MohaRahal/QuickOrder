@@ -1,0 +1,133 @@
+﻿@page "/clientes-cadastrados"
+@using QuickOrder.Models
+@using QuickOrder.Services
+@inject ClientServices clientService
+
+<div class="container mt-4">
+    <h3 class="mb-4">👤 Clientes Cadastrados</h3>
+
+    @if (clientes is null)
+    {
+        <div class="text-center">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Carregando...</span>
+            </div>
+            <p class="text-muted mt-2">Carregando clientes...</p>
+        </div>
+    }
+    else if (!clientes.Any())
+    {
+        <div class="alert alert-info">
+            Nenhum cliente cadastrado.
+        </div>
+        <NavLink class="btn btn-success" href="/consultar-cnpj">
+            <i class="fas fa-plus"></i> Adicionar Novo Cliente
+        </NavLink>
+    }
+    else
+    {
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="mb-0">Lista de Clientes</h5>
+            <NavLink class="btn btn-success" href="/consultar-cnpj">
+                <i class="fas fa-plus"></i> Adicionar Novo Cliente
+            </NavLink>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead class="table-dark">
+                    <tr>
+                        <th>CNPJ</th>
+                        <th>Nome</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var cliente in clientes)
+                    {
+                        <tr>
+                            <td>@cliente.CNPJ</td>
+                            <td>@cliente.Name</td>
+                            <td>
+                                <button class="btn btn-sm btn-warning me-2" @onclick="() => EditarCliente(cliente)">
+                                    <i class="fas fa-edit"></i> Editar
+                                </button>
+                                <button class="btn btn-sm btn-danger" @onclick="() => RemoverCliente(cliente.IdClients)">
+                                    <i class="fas fa-trash"></i> Remover
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+
+    @if (clienteEditando is not null)
+    {
+        <div class="card mt-4 shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Editar Cliente</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label for="cnpj" class="form-label">CNPJ:</label>
+                    <input id="cnpj" type="text" @bind="clienteEditando.CNPJ" class="form-control" />
+                </div>
+                <div class="mb-3">
+                    <label for="nome" class="form-label">Nome:</label>
+                    <input id="nome" type="text" @bind="clienteEditando.Name" class="form-control" />
+                </div>
+                <div class="d-flex justify-content-end gap-2">
+                    <button class="btn btn-success" @onclick="SalvarAlteracoes">
+                        <i class="fas fa-save"></i> Salvar
+                    </button>
+                    <button class="btn btn-danger" @onclick="CancelarEdicao">
+                        <i class="fas fa-times"></i> Cancelar
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private List<Client>? clientes;
+    private Client? clienteEditando;
+
+    protected override async Task OnInitializedAsync()
+    {
+        clientes = await clientService.BuscarTodosClientesAsync();
+    }
+
+    private void EditarCliente(Client cliente)
+    {
+        clienteEditando = new Client
+            {
+                IdClients = cliente.IdClients,
+                CNPJ = cliente.CNPJ,
+                Name = cliente.Name
+            };
+    }
+
+    private async Task RemoverCliente(int id)
+    {
+        await clientService.RemoverClientAsync(id);
+        clientes = await clientService.BuscarTodosClientesAsync();
+    }
+
+    private async Task SalvarAlteracoes()
+    {
+        if (clienteEditando is not null)
+        {
+            await clientService.UpdateClientAsync(clienteEditando);
+            clienteEditando = null;
+            clientes = await clientService.BuscarTodosClientesAsync();
+        }
+    }
+
+    private void CancelarEdicao()
+    {
+        clienteEditando = null;
+    }
+}

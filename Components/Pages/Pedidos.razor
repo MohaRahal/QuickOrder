@@ -1,0 +1,301 @@
+﻿@page "/novo-pedido"
+@using QuickOrder.Models
+@using QuickOrder.Services
+@inject CnpjApiServices cnpjApiServices
+@inject ProdutosServices produtosServices
+@inject OrderService orderService
+@inject ClientServices clientServices
+@inject NavigationManager navigation
+
+<div class="container mt-4">
+    <h3 class="mb-4">🛒 Novo Pedido</h3>
+
+    @if (isLoading)
+    {
+        <div class="text-center">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Carregando...</span>
+            </div>
+            <p>Carregando dados...</p>
+        </div>
+    }
+    else
+    {
+        <!-- Seção Cliente -->
+        <div class="card mb-4 shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Dados do Cliente</h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label for="cliente" class="form-label">Selecionar Cliente</label>
+                        <select id="cliente" class="form-select" @onchange="OnClienteSelecionadoMudou">
+                            <option value="">-- Selecione um cliente --</option>
+                            @foreach (var c in clientes)
+                            {
+                                <option value="@c.IdClients">@c.CNPJ - @c.Name</option>
+                            }
+                        </select>
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(order.NameClient))
+                    {
+                        <div class="col-md-6">
+                            <label for="nomeCliente" class="form-label">Nome do Cliente</label>
+                            <input id="nomeCliente" type="text" class="form-control" @bind="order.NameClient" readonly />
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Seção Produtos -->
+        <div class="card mb-4 shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Adicionar Produtos</h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label for="produto" class="form-label">Produto</label>
+                        <select id="produto" class="form-select" @onchange="OnProdutoSelecionadoMudou">
+                            <option value="">-- Selecione um produto --</option>
+                            @foreach (var p in produtos)
+                            {
+                                <option value="@p.IdProducts">@p.Name (Estoque: @p.Stock)</option>
+                            }
+                        </select>
+                    </div>
+                    @if (produtoSelecionado != null)
+                    {
+                        <div class="col-md-3">
+                            <label for="precoUnitario" class="form-label">Preço Unitário</label>
+                            <input id="precoUnitario" type="number" class="form-control" @bind="precoUnitarioEditavel" min="0.01" step="0.01" />
+                        </div>
+                        <div class="col-md-3">
+                            <label for="quantidade" class="form-label">Quantidade</label>
+                            <input id="quantidade" type="number" class="form-control" @bind="quantidade" min="1" max="@produtoSelecionado.Stock" />
+                        </div>
+                    }
+                </div>
+                @if (produtoSelecionado != null)
+                {
+                    <button class="btn btn-primary mt-3" @onclick="AdicionarItem">
+                        <i class="fas fa-plus"></i> Adicionar Produto
+                    </button>
+                }
+            </div>
+        </div>
+
+        <!-- Lista de Itens -->
+        @if (order.Items.Any())
+        {
+            <div class="card mb-4 shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Itens do Pedido</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Produto</th>
+                                    <th>Preço Unitário</th>
+                                    <th>Quantidade</th>
+                                    <th>Subtotal</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in order.Items)
+                                {
+                                    <tr>
+                                        <td>@item.ProductName</td>
+                                        <td>@item.PriceUnit.ToString("C")</td>
+                                        <td>@item.Quantity</td>
+                                        <td>@item.Subtotal.ToString("C")</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-danger" @onclick="() => RemoverItem(item)">
+                                                <i class="fas fa-trash"></i> Remover
+                                            </button>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="text-end mt-3">
+                        <h5>Total do Pedido: <span class="text-success">@order.TotalOrder.ToString("C")</span></h5>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-end gap-3">
+                <button class="btn btn-secondary" @onclick="CancelarPedido">
+                    <i class="fas fa-times"></i> Cancelar
+                </button>
+                <button class="btn btn-success" @onclick="SalvarPedido" disabled="@(!PodeSalvarPedido())">
+                    <i class="fas fa-save"></i> Salvar Pedido
+                </button>
+            </div>
+        }
+    }
+
+    <!-- Toast de Mensagem -->
+    @if (mostrarToast)
+    {
+        <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+            <div class="toast show" role="alert" aria-live="assertive" aria-atomic="true">
+                <div class="toast-header @toastClass">
+                    <strong class="me-auto">@toastTitle</strong>
+                    <button type="button" class="btn-close" @onclick="FecharToast"></button>
+                </div>
+                <div class="toast-body">
+                    @toastMessage
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private bool isLoading = true;
+    private bool mostrarToast = false;
+    private string toastTitle = "";
+    private string toastMessage = "";
+    private string toastClass = "";
+
+    private Order order = new(0, "", "", DateTime.Now, 0);
+    private List<Products> produtos = new();
+    private List<Client> clientes = new();
+    private Products? produtoSelecionado;
+    private decimal precoUnitarioEditavel;
+    private int quantidade = 1;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            produtos = await produtosServices.GetProductsAsync();
+            clientes = await clientServices.BuscarTodosClientesAsync();
+        }
+        catch (Exception ex)
+        {
+            MostrarToast("Erro", ex.Message, "bg-danger text-white");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void OnProdutoSelecionadoMudou(ChangeEventArgs e)
+    {
+        if (int.TryParse(e?.Value?.ToString(), out int id))
+        {
+            produtoSelecionado = produtos.FirstOrDefault(p => p.IdProducts == id);
+            precoUnitarioEditavel = produtoSelecionado?.Price ?? 0;
+            quantidade = 1;
+        }
+    }
+
+    private void OnClienteSelecionadoMudou(ChangeEventArgs e)
+    {
+        if (int.TryParse(e?.Value?.ToString(), out int id))
+        {
+            var cliente = clientes.FirstOrDefault(c => c.IdClients == id);
+            if (cliente != null)
+            {
+                order.CnpjClient = cliente.CNPJ;
+                order.NameClient = cliente.Name;
+            }
+        }
+    }
+
+    private void AdicionarItem()
+    {
+        if (produtoSelecionado == null || quantidade <= 0) return;
+
+        var itemExistente = order.Items.FirstOrDefault(i => i.IdProduct == produtoSelecionado.IdProducts);
+        if (itemExistente != null)
+        {
+            itemExistente.Quantity += quantidade;
+        }
+        else
+        {
+            order.Items.Add(new OrderItem(0, produtoSelecionado.IdProducts, produtoSelecionado.Name, quantidade, precoUnitarioEditavel));
+        }
+
+        AtualizarTotal();
+        ResetarSelecaoProduto();
+    }
+
+    private void RemoverItem(OrderItem item)
+    {
+        order.Items.Remove(item);
+        AtualizarTotal();
+    }
+
+    private void AtualizarTotal()
+    {
+        order.TotalOrder = order.Items.Sum(i => i.Subtotal);
+    }
+
+    private void ResetarSelecaoProduto()
+    {
+        produtoSelecionado = null;
+        precoUnitarioEditavel = 0;
+        quantidade = 1;
+    }
+
+    private bool PodeSalvarPedido()
+    {
+        return !string.IsNullOrWhiteSpace(order.CnpjClient) && order.Items.Any();
+    }
+
+    private async Task SalvarPedido()
+    {
+        try
+        {
+            if (!PodeSalvarPedido())
+            {
+                MostrarToast("Erro", "Preencha todos os campos obrigatórios.", "bg-warning text-dark");
+                return;
+            }
+
+            var resultado = await orderService.SalvarPedidoAsync(order);
+            if (resultado.Success)
+            {
+                order = new(0, "", "", DateTime.Now, 0);
+                MostrarToast("Sucesso", "Pedido salvo com sucesso!", "bg-success text-white");
+            }
+            else
+            {
+                MostrarToast("Erro", resultado.Message, "bg-danger text-white");
+            }
+        }
+        catch (Exception ex)
+        {
+            MostrarToast("Erro", ex.Message, "bg-danger text-white");
+        }
+    }
+
+    private void CancelarPedido()
+    {
+        navigation.NavigateTo("/pedidos");
+    }
+
+    private void MostrarToast(string titulo, string mensagem, string classe)
+    {
+        toastTitle = titulo;
+        toastMessage = mensagem;
+        toastClass = classe;
+        mostrarToast = true;
+        StateHasChanged();
+    }
+
+    private void FecharToast()
+    {
+        mostrarToast = false;
+    }
+}

@@ -1,0 +1,148 @@
+﻿@page "/consultar-cnpj"
+@using QuickOrder.Models
+@using QuickOrder.Services
+@inject ClientServices clientService
+@inject CnpjApiServices cnpjApi
+
+<div class="container mt-4">
+    <h3 class="mb-4">🔍 Pesquisar clientes pelo CNPJ</h3>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">Consulta de CNPJ</h5>
+        </div>
+        <div class="card-body">
+            <div class="mb-3">
+                <label for="cnpjInput" class="form-label">Digite o CNPJ:</label>
+                <input id="cnpjInput" type="text" @bind="cnpjInput" class="form-control" placeholder="00.000.000/0000-00" />
+            </div>
+
+            <button class="btn btn-primary" @onclick="BuscarCliente">
+                <i class="fas fa-search"></i> Buscar
+            </button>
+
+            @if (isLoading)
+            {
+                <div class="text-center mt-3">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Carregando...</span>
+                    </div>
+                    <p class="text-muted">Buscando dados...</p>
+                </div>
+            }
+            else if (mensagem != null)
+            {
+                <div class="alert mt-3 @MensagemClasse">
+                    <i class="@MensagemIcone"></i> @mensagem
+                </div>
+            }
+        </div>
+    </div>
+
+    @if (MostrarBotaoSalvar)
+    {
+        <div class="card shadow-sm">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">Cliente Encontrado</h5>
+            </div>
+            <div class="card-body">
+                <p><strong>Nome:</strong> @clienteEncontrado.Name</p>
+                <p><strong>CNPJ:</strong> @clienteEncontrado.CNPJ</p>
+
+                <button class="btn btn-success" @onclick="SalvarCliente">
+                    <i class="fas fa-save"></i> Salvar Cliente no Banco
+                </button>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private string cnpjInput = "";
+    private string? mensagem = string.Empty;
+    private string mensagemCor = "green-600";
+    private bool isLoading = false;
+    private Client? clienteEncontrado = null;
+
+
+    private bool MostrarBotaoSalvar =>
+        clienteEncontrado != null &&
+        !string.IsNullOrWhiteSpace(clienteEncontrado.Name) &&
+        !string.IsNullOrWhiteSpace(clienteEncontrado.CNPJ);
+
+  
+    private string MensagemClasse => mensagemCor switch
+    {
+        "green-600" => "alert-success",
+        "yellow-600" => "alert-warning",
+        "red-600" => "alert-danger",
+        _ => "alert-info"
+    };
+
+    private string MensagemIcone => mensagemCor switch
+    {
+        "green-600" => "fas fa-check-circle",
+        "yellow-600" => "fas fa-exclamation-circle",
+        "red-600" => "fas fa-times-circle",
+        _ => "fas fa-info-circle"
+    };
+
+    private async Task BuscarCliente()
+    {
+        isLoading = true;
+        mensagem = null;
+        clienteEncontrado = null;
+
+        try
+        {
+            clienteEncontrado = await cnpjApi.GetClientByCnpjAsync(cnpjInput);
+
+            if (clienteEncontrado != null)
+            {
+                if (!string.IsNullOrWhiteSpace(clienteEncontrado.Name) &&
+                    !string.IsNullOrWhiteSpace(clienteEncontrado.CNPJ))
+                {
+                    mensagem = $"Cliente encontrado: {clienteEncontrado.Name} - CNPJ: {clienteEncontrado.CNPJ}";
+                    mensagemCor = "green-600";
+                }
+                else
+                {
+                    mensagem = "Cliente não encontrado!";
+                    mensagemCor = "yellow-600";
+                }
+            }
+            else
+            {
+                mensagem = "Cliente não encontrado ou CNPJ inválido.";
+                mensagemCor = "red-600";
+            }
+        }
+        catch (Exception ex)
+        {
+            mensagem = $"Erro na consulta: {ex.Message}";
+            mensagemCor = "red-600";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task SalvarCliente()
+    {
+        try
+        {
+            if (MostrarBotaoSalvar)
+            {
+                await clientService.SalvarClientAsync(clienteEncontrado!);
+                mensagem = "Cliente salvo com sucesso!";
+                mensagemCor = "green-600";
+            }
+        }
+        catch (Exception ex)
+        {
+            mensagem = $"Erro ao salvar cliente: {ex.Message}";
+            mensagemCor = "red-600";
+        }
+    }
+}

@@ -1,0 +1,193 @@
+﻿@page "/produtos"
+@using QuickOrder.Models
+@using QuickOrder.Services
+@inject ProdutosServices produtosServices
+
+<h3 class="mb-3">Gerenciar Produtos</h3>
+
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="alert alert-danger">
+        <strong>Erro:</strong> @errorMessage
+    </div>
+}
+else if (produtos == null)
+{
+    <div class="text-center">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Carregando...</span>
+        </div>
+        <p class="text-muted mt-2">Carregando produtos...</p>
+    </div>
+}
+else
+{
+    <button class="btn btn-success mb-3" @onclick="AbrirFormulario">Adicionar Produto</button>
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Id</th>
+                <th>Nome</th>
+                <th>Descrição</th>
+                <th>Preço</th>
+                <th>Estoque</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var produto in produtos)
+            {
+                <tr>
+                    <td>@produto.IdProducts</td>
+                    <td>@produto.Name</td>
+                    <td>@produto.Description</td>
+                    <td>@produto.Price.ToString("C")</td>
+                    <td>@produto.Stock</td>
+                    <td>
+                        <button class="btn btn-warning btn-sm me-2" @onclick="@(() => EditarProduto(produto))">Editar</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@if (mostrarFormulario)
+{
+    <EditForm Model="@novoProduto" OnValidSubmit="SalvarProduto">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+        <div class="mb-3">
+            <label class="form-label">Nome</label>
+            <InputText class="form-control" @bind-Value="novoProduto.Name" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Descrição</label>
+            <InputText class="form-control" @bind-Value="novoProduto.Description" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Preço</label>
+            <InputNumber class="form-control" @bind-Value="novoProduto.Price" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Estoque</label>
+            <InputNumber class="form-control" @bind-Value="novoProduto.Stock" />
+        </div>
+        <button type="submit" class="btn btn-success">@((editando ? "Atualizar" : "Salvar"))</button>
+        <button type="button" class="btn btn-secondary ms-2" @onclick="CancelarFormulario">Cancelar</button>
+    </EditForm>
+}
+
+@if (mostrarToast)
+{
+    <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+        <div class="toast show" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header @toastClass">
+                <strong class="me-auto">@toastTitle</strong>
+                <button type="button" class="btn-close" @onclick="FecharToast"></button>
+            </div>
+            <div class="toast-body">
+                @toastMessage
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<Products>? produtos;
+    private Products novoProduto = new Products();
+    private bool mostrarFormulario = false;
+    private bool editando = false;
+    private string? errorMessage;
+
+    // Toast
+    private bool mostrarToast = false;
+    private string toastTitle = "";
+    private string toastMessage = "";
+    private string toastClass = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CarregarProdutos();
+    }
+
+    private async Task CarregarProdutos()
+    {
+        try
+        {
+            produtos = await produtosServices.GetProductsAsync();
+            errorMessage = null;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Erro ao carregar produtos: {ex.Message}";
+        }
+    }
+
+    private void AbrirFormulario()
+    {
+        novoProduto = new Products();
+        mostrarFormulario = true;
+        editando = false;
+    }
+
+    private void CancelarFormulario()
+    {
+        mostrarFormulario = false;
+        editando = false;
+        novoProduto = new Products();
+    }
+
+    private async Task SalvarProduto()
+    {
+        try
+        {
+            if (editando)
+            {
+                await produtosServices.UpdateProductAsync(novoProduto);
+                MostrarToast("Produto Atualizado", "Produto atualizado com sucesso!", "bg-warning text-dark");
+            }
+            else
+            {
+                await produtosServices.AddProductAsync(novoProduto);
+                MostrarToast("Produto Adicionado", "Produto salvo com sucesso!", "bg-success text-white");
+            }
+
+            mostrarFormulario = false;
+            await CarregarProdutos();
+        }
+        catch (Exception ex)
+        {
+            MostrarToast("Erro", $"Erro ao salvar o produto: {ex.Message}", "bg-danger text-white");
+        }
+    }
+
+    private void EditarProduto(Products produto)
+    {
+        novoProduto = new Products
+            {
+                IdProducts = produto.IdProducts,
+                Name = produto.Name,
+                Description = produto.Description,
+                Price = produto.Price,
+                Stock = produto.Stock
+            };
+
+        mostrarFormulario = true;
+        editando = true;
+    }
+
+    private void MostrarToast(string titulo, string mensagem, string classe)
+    {
+        toastTitle = titulo;
+        toastMessage = mensagem;
+        toastClass = classe;
+        mostrarToast = true;
+        StateHasChanged();
+    }
+
+    private void FecharToast()
+    {
+        mostrarToast = false;
+    }
+}
