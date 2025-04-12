@@ -85,14 +85,14 @@ Caso deseje trabalhar diretamente com o banco local:
 
 ---
 
-## 📦 Instalação e Execução
+### 📦 Instalação e Execução
 
-### 📁 Clonar o repositório
+## 📁 Clonar o repositório
 ```bash
 git clone https://github.com/MohaRahal/QuickOrder.git
 cd QuickOrder
 ```
-###📚 Instalação de Dependências
+## 📚 Instalação de Dependências
 🔹Blazorise
 ```bash
 dotnet add package Blazorise.Bootstrap --version 0.9.0-alpha1
@@ -102,16 +102,21 @@ dotnet add package Blazorise.Icons.FontAwesome --version 0.9.0-alpha1
 ```bash
 dotnet add package QuestPDF --version 2022.2.0
 ```
-###🤝 Contribuindo
+## 🤝 Contribuindo
 Contribuições são sempre bem-vindas!
 Sinta-se livre para abrir issues, forks ou enviar pull requests 🚀
 
-###📬 Contato
+## 📬 Contato
+
 ✉️ Email: moharahal30@gmail.com
 
 💼 GitHub: @MohaRahal
 
 📲 LinkedIn: https://www.linkedin.com/in/mohamed-rahal-181577274
+
+### ⚠️ ATENÇÃO
+
+-Até o momento o app funciona apenas no windows , proxima atualização deverá voltar a funcionar no android e nos demais dispositivos , caso queira ajudar , basta enviar um email!
 
 
 
