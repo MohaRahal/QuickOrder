@@ -111,7 +111,7 @@ Sinta-se livre para abrir issues, forks ou enviar pull requests 🚀
 
 💼 GitHub: @MohaRahal
 
-📲 LinkedIn: https://www.linkedin.com/in/mohamed-rahal-181577274/linkedin.com/in/seu-perfil
+📲 LinkedIn: https://www.linkedin.com/in/mohamed-rahal-181577274
 
 
 
